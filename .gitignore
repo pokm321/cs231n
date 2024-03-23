@@ -7,8 +7,9 @@ __pycache__
 
 # Assignment 1 generated
 assignment1/cs231n/datasets/cifar-10-batches-py
-assignment1/a1.zip
-assignment1/assignment.pdf
+assignment1/collect_submission.ipynb
+assignment1/collectSubmission.sh
+assignment1/makepdf.py
 
 # Assignment 2 generated
 assignment2/cs231n/build
