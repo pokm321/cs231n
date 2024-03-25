@@ -4,6 +4,7 @@ venv
 # Python
 __pycache__
 .ipynb_checkpoints
+cs231n_github_commit.ipynb
 
 # Assignment 1 generated
 assignment1/cs231n/datasets/cifar-10-batches-py
