@@ -13,11 +13,10 @@ assignment1/collectSubmission.sh
 assignment1/makepdf.py
 
 # Assignment 2 generated
-assignment2/cs231n/build
-assignment2/cs231n/im2col_cython.cpython*
 assignment2/cs231n/datasets/cifar-10-batches-py
-assignment2/a2.zip
-assignment2/assignment.pdf
+assignment2/collect_submission.ipynb
+assignment2/collectSubmission.sh
+assignment2/makepdf.py
 
 # Assignment 3 generated
 assignment3/cs231n/datasets/coco_captioning
