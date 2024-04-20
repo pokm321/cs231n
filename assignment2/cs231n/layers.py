@@ -593,8 +593,28 @@ def conv_forward_naive(x, w, b, conv_param):
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    pad = conv_param["pad"]
+    stride = conv_param["stride"]
 
-    pass
+    x_pad = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)))
+
+    left_max = H + 2*pad - HH # 필터의 왼쪽면 좌표 최대값
+    top_max = W + 2*pad - WW # 필터의 윗면 좌표 최대값
+
+    H_out = 1 + int(left_max / stride)
+    W_out = 1 + int(top_max / stride)
+    out = np.zeros((N, F, H_out, W_out))
+    
+    for i_N, data in enumerate(x_pad): # 각 데이터 data.shape=(C,H,W)
+      for i_F, filt in enumerate(w): # 각 필터 filt.shape=(C,HH,WW)
+        # 각 Activation map
+        for i_H_out, i_H in enumerate(range(0, left_max + 1, stride)):
+          for i_W_out, i_W in enumerate(range(0, top_max + 1, stride)):
+            out[i_N][i_F][i_H_out][i_W_out] = np.sum(data[:, i_H:i_H + HH, i_W:i_W + WW] * filt)
+
+    out += b.reshape(1,-1,1,1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -621,8 +641,33 @@ def conv_backward_naive(dout, cache):
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    pad = conv_param["pad"]
+    stride = conv_param["stride"]
+    
+    x_pad = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)))
 
-    pass
+    left_max = H + 2*pad - HH # 필터의 왼쪽면 좌표 최대값
+    top_max = W + 2*pad - WW # 필터의 윗면 좌표 최대값
+
+    H_out = 1 + int(left_max / stride)
+    W_out = 1 + int(top_max / stride)
+
+    dx = np.zeros(x_pad.shape)
+    dw = np.zeros(w.shape)
+    db = np.sum(dout, axis=(0,2,3))
+
+    for i_N, data in enumerate(x_pad): # 각 데이터 data.shape=(C,H,W)
+      for i_F, filt in enumerate(w): # 각 필터 filt.shape=(C,HH,WW)
+        # 각 Activation map
+        for i_H_out, i_H in enumerate(range(0, left_max + 1, stride)):
+          for i_W_out, i_W in enumerate(range(0, top_max + 1, stride)):
+            dx[i_N, :, i_H:i_H + HH, i_W:i_W + WW] += filt * dout[i_N, i_F, i_H_out, i_W_out] # dx에는 해당하는 w*dout을 더하고,
+            dw[i_F, :, :, :] += data[:, i_H:i_H + HH, i_W:i_W + WW] * dout[i_N, i_F, i_H_out, i_W_out]# dw에는 해당하는 x*dout을 더함
+
+    dx = dx[:, :, pad:-pad, pad:-pad] # 패딩 제거
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -656,8 +701,17 @@ def max_pool_forward_naive(x, pool_param):
     # TODO: Implement the max-pooling forward pass                            #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    N, C, H, W = x.shape
+    pool_height, pool_width, stride = pool_param["pool_height"], pool_param["pool_width"], pool_param["stride"]
 
-    pass
+    H_out = int(1 + (H - pool_height) / stride)
+    W_out = int(1 + (W - pool_width) / stride)
+
+    out = np.zeros((N, C, H_out, W_out))
+
+    for i_H in range(H_out):
+      for i_W in range(W_out):
+        out[:, :, i_H, i_W] += x[:, :, i_H*stride : i_H*stride+pool_height, i_W*stride : i_W*stride+pool_width].max(axis=(2,3)) 
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -682,8 +736,18 @@ def max_pool_backward_naive(dout, cache):
     # TODO: Implement the max-pooling backward pass                           #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    x, pool_param = cache
+    N, C, H, W = x.shape
+    N, C, H_out, W_out = dout.shape
+    pool_height, pool_width, stride = pool_param["pool_height"], pool_param["pool_width"], pool_param["stride"]
 
-    pass
+    dx = np.zeros(x.shape)
+
+    for i_H in range(H_out):
+      for i_W in range(W_out):
+        x_pool = x[:, :, i_H*stride : i_H*stride+pool_height, i_W*stride : i_W*stride+pool_width]
+        mask = x_pool == x_pool.max(axis=(2,3), keepdims=True)
+        dx[:, :, i_H*stride : i_H*stride+pool_height, i_W*stride : i_W*stride+pool_width] += dout[:, :, i_H:i_H+1, i_W:i_W+1] * mask
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
