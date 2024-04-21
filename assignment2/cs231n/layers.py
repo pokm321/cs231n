@@ -867,8 +867,23 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     # and layer normalization!                                                #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    N, C, H, W = x.shape
+    group_size = C // G
+    
+    out, cache = [], []
+    for i in range(G):
+      # 그룹별 나누고 (N,D) 혹은 (N,)에 맞게 맞춤
+      x_g = x[:, i*group_size : (i+1)*group_size, :, :].reshape((N,-1))
+      gamma_g = np.broadcast_to(gamma[:, i*group_size : (i+1)*group_size, :, :], (1, group_size, H, W)).ravel()
+      beta_g = np.broadcast_to(beta[:, i*group_size : (i+1)*group_size, :, :], (1, group_size, H, W)).ravel()
 
-    pass
+      out_g, cache_g = layernorm_forward(x_g, gamma_g, beta_g, gn_param)
+      out.append(out_g.reshape((N, group_size, H, W)))
+      cache.append(cache_g)
+
+    out = np.concatenate(out, axis=1)
+    cache.append(G)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -897,7 +912,24 @@ def spatial_groupnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = dout.shape
+    G = cache.pop()
+    
+    group_size = C // G
+    dx, dgamma, dbeta = [], [], []
+    
+    for i in range(G):
+      # 그룹별 나누고 (N,D)에 맞게 맞춤
+      dout_g = dout[:, i*group_size : (i+1)*group_size, :, :].reshape((N,-1))
+      dx_g, dgamma_g, dbeta_g = layernorm_backward(dout_g, cache[i])
+      
+      dx.append(dx_g.reshape((N, group_size, H, W)))
+      dgamma.append(dgamma_g.reshape((1, group_size, H, W)).sum(axis=(2,3), keepdims=True))
+      dbeta.append(dbeta_g.reshape((1, group_size, H, W)).sum(axis=(2,3), keepdims=True))
+
+    dx = np.concatenate(dx, axis=1)
+    dgamma = np.concatenate(dgamma, axis=1)
+    dbeta = np.concatenate(dbeta, axis=1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
