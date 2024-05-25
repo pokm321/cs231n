@@ -38,7 +38,12 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        i = torch.arange(max_len).reshape(1, -1, 1)
+        j = torch.arange(embed_dim).reshape(1, 1, -1)
+        
+        pe += torch.where(j % 2 == 0,
+                          (i * 10000**(-j / embed_dim)).sin(), 
+                          (i * 10000**(-(j-1) / embed_dim)).cos())
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -70,7 +75,8 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        output = x + self.pe[:, :S, :]
+        output = self.dropout(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -165,7 +171,22 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        H = self.n_head
+        query = self.query(query).reshape(N, S, H, -1).transpose(1, 2) # (N, H, S, E/H)
+        key = self.key(key).reshape(N, T, H, -1).transpose(1, 2) # (N, H, T, E/H)
+        value = self.value(value).reshape(N, T, H, -1).transpose(1, 2) # (N, H, T, E/H)
+
+        attention_scores = torch.matmul(query, key.transpose(3,2)) / math.sqrt(self.head_dim) # (N, H, S, T)
+
+        if attn_mask is not None: # (S, T)
+          attention_scores = attention_scores.masked_fill(attn_mask == 0, float('-inf'))
+
+        attention_weights = F.softmax(attention_scores, dim=-1) # (N, H, S, T)
+        attention_weights = self.attn_drop(attention_weights)
+        
+        output = torch.matmul(attention_weights, value) # (N, H, S, E/H)
+        output = output.transpose(1, 2).reshape(N, S, -1) # (N, S, E)
+        output = self.proj(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
